@@ -1,0 +1,12 @@
+# 秘密情報 — 絶対にコミットしない
+.env
+*.env
+!*.env.example
+
+# Hermes / 作業ディレクトリ
+hermes-home/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+hs-review/

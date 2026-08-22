@@ -6,15 +6,21 @@
 #   vikunja        : タスク管理 (:3456)
 #
 # 起動:
-#   cp .env.example .env  → APIキー等を設定 → docker compose up --build
-#   ブラウザ: http://localhost:3000
+#   cp .env.example .env  → .env を編集(API_SERVER_KEY / VIKUNJA_SERVICE_SECRET 必須)
+#   → docker compose up --build
+#   → ブラウザ: http://localhost:3000
+#
+# セキュリティ方針:
+#   - 3サービスのホスト公開ポートは 127.0.0.1 に绑定。社内外へ公開する場合は
+#     TLSリバースプロキシ + 認証(SSO/basic auth)を前段に置くこと。
+#   - エージェントAPI(:8642)は API_SERVER_KEY (= HERMES_API_TOKEN) で認証。
+#     API_SERVER_ENABLED=true / API_SERVER_HOST=0.0.0.0 / API_SERVER_KEY 必須。
+#   - エージェントの ~/.hermes はボリューム hermes-home に永続化(MCP設定/config.yaml)。
 #
 # 備考:
-#   - エージェントの ~/.hermes をボリューム hermes-home で永続化している。
-#     ここに config.yaml が置かれ、Hermes Studio の「MCP Servers」設定や
-#     Vikunja のMCP登録もそこに書き込まれる(→ mcp/vikunja-mcp.md 参照)。
-#   - hermes-agent 内で npx による npm系MCPサーバ(vikunja-mcp等)を動かせるよう
-#     Node.js を同梱している(→ docker/agent/Dockerfile)。
+#   - hermes-studio は JPeetz/Hermes-Studio を Dockerfile 内でクローンしてビルド(→ docker/studio/Dockerfile)。
+#     このリポジトリはアプリソースを同梱しない。
+#   - vikunja の JWT秘密は VIKUNJA_SERVICE_SECRET(.env) から注入。未設定なら起動しない(fail-safe)。
 
 services:
   # ── Hermes Agent ゲートウェイ ───────────────────────────────
@@ -29,63 +35,112 @@ services:
       - .env
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # APIサーバ(Studioが接続する)を稼働させる
       API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: "0.0.0.0"            # コンテナ内から studio へ届けるため必須
+      # 非ループバック绑定は認証必須。Studio は HERMES_API_TOKEN = API_SERVER_KEY で認証する
+      API_SERVER_KEY: ${API_SERVER_KEY:?set API_SERVER_KEY in .env}
       # コンテナ内のVikunjaへはサービス名で解決
       VIKUNJA_URL: ${VIKUNJA_URL:-http://vikunja:3456/api/v1}
+      VIKUNJA_API_TOKEN: ${VIKUNJA_API_TOKEN:-}
     volumes:
-      # agentの設定・メモリ・セッション・MCP設定を永続化する。ホストからは中身を直接編集可
+      # agentの設定・メモリ・セッション・MCP設定を永続化
       - hermes-home:/root/.hermes
     healthcheck:
+      # /health は認証不要のliveness(devopsレビューで公式ソース検証済み)
       test: ["CMD", "curl", "-fsS", "http://localhost:8642/health"]
       interval: 15s
       timeout: 5s
       retries: 8
-      start_period: 20s
+      start_period: 60s      # 初回の git clone + pip install を考慮
+    depends_on:
+      vikunja:
+        condition: service_started
+    restart: unless-stopped
     ports:
-      - "8642:8642"
+      - "127.0.0.1:8642:8642"
 
   # ── Hermes Studio (Web UI) ─────────────────────────────────
   hermes-studio:
     build:
       context: .
       dockerfile: docker/studio/Dockerfile
+      args:
+        STUDIO_REPO: ${STUDIO_REPO:-https://github.com/JPeetz/Hermes-Studio.git}
+        STUDIO_VERSION: ${STUDIO_VERSION:-v1.18.1}
     depends_on:
       hermes-agent:
         condition: service_healthy
     env_file:
       - .env
     environment:
+      # 内部Dockerネットワーク（studio→agent）。HERMES_API_TOKEN は .env で API_SERVER_KEY と同値を設定
       HERMES_API_URL: http://hermes-agent:8642
-      HERMES_API_TOKEN: ${HERMES_API_TOKEN:-}
       REDIS_URL: ${REDIS_URL:-}
     volumes:
       - studio-sessions:/app/.runtime     # セッション保持(ファイルストア)
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   # ── Vikunja (タスク管理) ──────────────────────────────────
   vikunja:
     image: vikunja/vikunja:2.5.0
-    # 外部のVikunjaを既に使う場合はコメントアウトして、
+    # 外部のVikunjaを既に使う場合はこのサービスを止めて、
     # .env の VIKUNJA_URL を そのURL→ /api/v1 に変えること
+    env_file:
+      - .env
     environment:
       VIKUNJA_SERVICE_CONFIG: /app/vikunja/config.yml
+      # JWT秘密は .env から必須注入(未設定なら起動しない)。プレースホルダをコミットしない
+      VIKUNJA_SERVICE_SECRET: ${VIKUNJA_SERVICE_SECRET:?set VIKUNJA_SERVICE_SECRET in .env}
+      # 初期セットアップが終わったら false のまま。ユーザー登録は明示的な期間だけ true にする
+      VIKUNJA_SERVICE_ENABLEREGISTRATION: "false"
+      VIKUNJA_SERVICE_PUBLICURL: ${VIKUNJA_PUBLICURL:-http://localhost:3456}
     volumes:
       - vikunja-files:/app/vikunja/files
       - vikunja-db:/app/vikunja/data
       - ./vikunja-config.yml:/app/vikunja/config.yml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3456/api/v1/info"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
     ports:
-      - "3456:3456"
+      - "127.0.0.1:3456:3456"
 
 # ── Redis セッション永続化(任意) ────────────────────────────
-#   REDIS_URL=redis://redis:6379 にして docker compose --profile redis up
+#   REDIS_URL=redis://:redispass@redis:6379 にして docker compose --profile redis up
   redis:
     image: redis:7-alpine
     profiles:
       - redis
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      # 暗号化せず平文で公開していないが、社内でもパスワード推奨: --requirepass を .env の REDIS_PASSWORD から
+      - --requirepass
+      - ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
     volumes:
       - redis-data:/data
-    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
 
 volumes:
   hermes-home:

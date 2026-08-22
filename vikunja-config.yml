@@ -1,9 +1,11 @@
 # Vikunja コンテナ用設定 (company)
+#
+# 重要: JWT秘密 (service.secret) はここに書かない。.env の VIKUNJA_SERVICE_SECRET から注入する
+# (docker-compose.yml が環境変数で必須にするため。未設定ならVikunjaは起動しない = fail-safe)。
 service:
-  secret: "REPLACE_WITH_A_LONG_RANDOM_SECRET"
   interface: ":3456"
-  publicurl: "http://localhost:3456"
-  enableregistration: true   # 初回セットアップ用。使い始めたら false に推奨
+  publicurl: "http://localhost:3456"   # リバースプロキシや外公開時は VIKUNJA_PUBLICURL で上書き
+  enableregistration: false            # 初期セットアップ専用に一時的に true にする運用が安全
   timezone: "Asia/Tokyo"
   rootpath: "/app/vikunja"
 

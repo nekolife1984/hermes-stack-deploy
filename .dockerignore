@@ -1,0 +1,12 @@
+# Docker build context から除外 — シークレットをイメージ層に焼き込まない
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.md
+README.md
+.devcontainer
+docker/
+vikunja-config.yml
+hs-review/
