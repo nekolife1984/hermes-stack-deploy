@@ -18,15 +18,16 @@ WORKDIR /app
 RUN if [ "${HERMES_AGENT_VERSION}" != "main" ]; then \
       git fetch origin && git checkout "v${HERMES_AGENT_VERSION}" || git checkout "${HERMES_AGENT_VERSION}"; \
     fi
-RUN pip install --no-cache-dir -e .
-
-# uv (高速なPythonパッケージマネージャ) を同梱 — エージェント/スクリプトから呼び出せるように
+# uv を導入し、以降のPython依存はすべて uv で管理(依存解決・ビルドが高速)
 RUN python3 -m pip install --no-cache-dir uv
+ENV UV_NO_CACHE=1
+
+# 本プロジェクト(Hermes Agent)を editable でインストール(uv, システムPythonへ)
+RUN uv pip install --system -e .
 
 # Python開発ツール(最低限) — ランタイム画像を軽く保つため必要最小限に
 #   ruff(lint/format) / mypy(型) / pytest(テスト)
-RUN python3 -m pip install --no-cache-dir \
-    ruff mypy pytest
+RUN uv pip install --system ruff mypy pytest
 
 ENV HOME=/root
 EXPOSE 8642
