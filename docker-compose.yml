@@ -52,6 +52,8 @@ services:
       #   使い方: docker compose exec hermes-agent \
       #           git clone https://<scoped-pat>@github.com/<owner>/<repo> /workspace/<repo>
       - dev-workspace:/workspace
+      # VS Codeサーバーの状態永続化(devcontainerをagentに接続するため)
+      - vscode-server:/root/.vscode-server
     healthcheck:
       # /health は認証不要のliveness(devopsレビューで公式ソース検証済み)
       test: ["CMD", "curl", "-fsS", "http://localhost:8642/health"]
@@ -151,6 +153,7 @@ services:
 volumes:
   hermes-home:
   dev-workspace:
+  vscode-server:
   studio-sessions:
   vikunja-files:
   vikunja-db:

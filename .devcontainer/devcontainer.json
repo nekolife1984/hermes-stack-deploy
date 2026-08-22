@@ -1,9 +1,9 @@
 {
   "name": "Hermes Studio + Agent + Vikunja",
   "dockerComposeFile": "../docker-compose.yml",
-  "service": "hermes-studio",
-  "workspaceFolder": "/app",
+  "service": "hermes-agent",
+  "workspaceFolder": "/workspace",
   "overrideCommand": false,
   "forwardPorts": [3000, 8642, 3456],
-  "postCreateCommand": "echo 'Adjust .env (ANTHROPIC_API_KEY / VIKUNJA_API_TOKEN) to get started'"
+  "postCreateCommand": "echo 'VS Code and Hermes now share /workspace. Ensure .env has API_SERVER_KEY / VIKUNJA_SERVICE_SECRET / COPILOT_GITHUB_TOKEN before startup.'"
 }

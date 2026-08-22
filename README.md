@@ -90,10 +90,15 @@ docker compose up --build        # → http://localhost:3000
 - **バージョンピン**: `HERMES_AGENT_VERSION` / `STUDIO_VERSION` はリリースタグでピン止め推奨(再現性)。
 - **ベースイメージ**: 漂移を避けるならタグ+ダイジェストをピン。ビルドは `docker compose --pull build` で冒頭検証できる。
 
-## コンテナ内での開発（クリーンルーム方式）
+## コンテナ内での開発（クリーンルーム方式・VS CodeとHermesで場所を統一）
 
-開発用ワークスペースは `dev-workspace` ボリュームが `/workspace` にマウントされる。
-**ホストFSへはマウントしない**＝機密をホストに晒さず、コンテナ内に閉じた作業領域で開発する。
+devcontainer は **`hermes-agent` コンテナに接続**し、`workspaceFolder` は **`/workspace`**。
+つまり **VS Code で見る場所 = Hermes(エージェント)が触る場所 = 同じ `/workspace`** で、
+分かれて作業しなくて済む(agentはrootで動くので権限も一致)。
+
+- 開発用ワークスペースは `dev-workspace` ボリュームが `/workspace` にマウントされる。
+- **ホストFSへはマウントしない**＝機密をホストに晒さず、コンテナ内に閉じた作業領域。
+- VS Codeサーバー状態は `vscode-server` ボリュームで永続化(agentのHOME=/root配下)。
 
 ```bash
 # 1. 開発したいリポジトリをコンテナ内へ clone(スコープ最小のfine-grained PATを使用)
