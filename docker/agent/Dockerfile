@@ -25,9 +25,8 @@ ENV UV_NO_CACHE=1
 # 本プロジェクト(Hermes Agent)を editable でインストール(uv, システムPythonへ)
 RUN uv pip install --system -e .
 
-# Python開発ツール(最低限) — ランタイム画像を軽く保つため必要最小限に
-#   ruff(lint/format) / mypy(型) / pytest(テスト)
-RUN uv pip install --system ruff mypy pytest
+# 開発用ツール(ruff/mypy/pytest等)はシステムPythonへは入れない。
+# アプリ開発時は uv で作った開発用venvへ入れる: uv venv .venv && uv pip install ruff mypy pytest
 
 ENV HOME=/root
 EXPOSE 8642
