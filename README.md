@@ -57,6 +57,19 @@ docker compose up --build   # → http://localhost:3000
 - **バージョンピン**: `HERMES_AGENT_VERSION` / `STUDIO_VERSION` はリリースタグでピン止め推奨(再現性)。
 - **ベースイメージ**: 漂移を避けるならタグ+ダイジェストをピン。ビルドは `docker compose --pull build` で冒頭検証できる。
 
+## バックアップ
+
+`docker compose down -v` / `docker system prune -a --volumes` / ホスト故障で
+**エージェントの記憶(hermes-home)やタスクDB(vikunja-db)が全損**する。定期的にvolumeを退避する:
+
+```bash
+./scripts/backup-volumes.sh --check           # どのvolumeがあるか確認
+./scripts/backup-volumes.sh                   # ./backups/<日時>/ に tar.gz 出力
+BACKUP_DIR=/mnt/backup ./scripts/backup-volumes.sh   # 場所を指定
+```
+復元例と注意はスクリプト内に記載。社内運用では `restic`/`rclone` で
+オフサイト暗号化バックアップ＋週次実行(ボクのcronでも回せるよ)を推奨。
+
 ## CI / 検証
 
 GitHub Actions(`.github/workflows/validate.yml`)がPR・main pushで自動実行:
