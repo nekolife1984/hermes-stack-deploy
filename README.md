@@ -90,6 +90,30 @@ docker compose up --build        # → http://localhost:3000
 - **バージョンピン**: `HERMES_AGENT_VERSION` / `STUDIO_VERSION` はリリースタグでピン止め推奨(再現性)。
 - **ベースイメージ**: 漂移を避けるならタグ+ダイジェストをピン。ビルドは `docker compose --pull build` で冒頭検証できる。
 
+## コンテナ内での開発（クリーンルーム方式）
+
+開発用ワークスペースは `dev-workspace` ボリュームが `/workspace` にマウントされる。
+**ホストFSへはマウントしない**＝機密をホストに晒さず、コンテナ内に閉じた作業領域で開発する。
+
+```bash
+# 1. 開発したいリポジトリをコンテナ内へ clone(スコープ最小のfine-grained PATを使用)
+docker compose exec hermes-agent \
+  git clone https://<scoped-pat>@github.com/<owner>/<repo> /workspace/<repo>
+
+# 2. agentに作業させる/エージェントのフォルダ操作は /workspace/<repo> を触る
+
+# 3. 変更は git push でGitHubへ戻す(GitHubが「真」の保存先)
+docker compose exec hermes-agent \
+  git -C /workspace/<repo> add -A && git -C /workspace/<repo> commit -m "..." \
+  && git -C /workspace/<repo> push
+```
+
+**安全の要点:**
+- **PATは対象リポジトリのみ・期限付き**(fine-grained PAT)。ホストの秘密を使わない。
+- ボリュームは `dev-workspace`(作業) と `hermes-home`(記憶) を分離 → 片方の `down -v` が他方を巻き込まない。
+- `docker compose down -v` で作業コピーは消えるが、**push済みなら`clone`し直すだけで復元可能**。
+- ホストの実ファイルを直接編集したい場合のみ、ホスト側のbindマウント方式を検討(ただし安全面は弱くなる)。
+
 ## バックアップ
 
 `docker compose down -v` / `docker system prune -a --volumes` / ホスト故障で

@@ -46,6 +46,12 @@ services:
     volumes:
       # agentの設定・メモリ・セッション・MCP設定を永続化
       - hermes-home:/root/.hermes
+      # 開発用ワークスペース(コンテナ内に閉じた作業領域)
+      #   ホストFSへはマウントしない(安全優先/クリーンルーム方式)。
+      #   ここに git clone して作業し、変更は git push でGitHubへ戻す。
+      #   使い方: docker compose exec hermes-agent \
+      #           git clone https://<scoped-pat>@github.com/<owner>/<repo> /workspace/<repo>
+      - dev-workspace:/workspace
     healthcheck:
       # /health は認証不要のliveness(devopsレビューで公式ソース検証済み)
       test: ["CMD", "curl", "-fsS", "http://localhost:8642/health"]
@@ -144,6 +150,7 @@ services:
 
 volumes:
   hermes-home:
+  dev-workspace:
   studio-sessions:
   vikunja-files:
   vikunja-db:
