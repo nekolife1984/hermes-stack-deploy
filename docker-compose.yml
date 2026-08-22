@@ -1,0 +1,95 @@
+# Hermes Studio + Hermes Agent + Vikunja — 会社向け Docker Compose
+#
+# 3サービス構成:
+#   hermes-agent   : Hermes Agent ゲートウェイ (HTTP API :8642)
+#   hermes-studio  : Hermes Studio Web UI (:3000)
+#   vikunja        : タスク管理 (:3456)
+#
+# 起動:
+#   cp .env.example .env  → APIキー等を設定 → docker compose up --build
+#   ブラウザ: http://localhost:3000
+#
+# 備考:
+#   - エージェントの ~/.hermes をボリューム hermes-home で永続化している。
+#     ここに config.yaml が置かれ、Hermes Studio の「MCP Servers」設定や
+#     Vikunja のMCP登録もそこに書き込まれる(→ mcp/vikunja-mcp.md 参照)。
+#   - hermes-agent 内で npx による npm系MCPサーバ(vikunja-mcp等)を動かせるよう
+#     Node.js を同梱している(→ docker/agent/Dockerfile)。
+
+services:
+  # ── Hermes Agent ゲートウェイ ───────────────────────────────
+  hermes-agent:
+    build:
+      context: .
+      dockerfile: docker/agent/Dockerfile
+      args:
+        HERMES_AGENT_REPO: ${HERMES_AGENT_REPO:-https://github.com/NousResearch/hermes-agent.git}
+        HERMES_AGENT_VERSION: ${HERMES_AGENT_VERSION:-main}
+    env_file:
+      - .env
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      API_SERVER_ENABLED: "true"
+      # コンテナ内のVikunjaへはサービス名で解決
+      VIKUNJA_URL: ${VIKUNJA_URL:-http://vikunja:3456/api/v1}
+    volumes:
+      # agentの設定・メモリ・セッション・MCP設定を永続化する。ホストからは中身を直接編集可
+      - hermes-home:/root/.hermes
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8642/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    ports:
+      - "8642:8642"
+
+  # ── Hermes Studio (Web UI) ─────────────────────────────────
+  hermes-studio:
+    build:
+      context: .
+      dockerfile: docker/studio/Dockerfile
+    depends_on:
+      hermes-agent:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      HERMES_API_URL: http://hermes-agent:8642
+      HERMES_API_TOKEN: ${HERMES_API_TOKEN:-}
+      REDIS_URL: ${REDIS_URL:-}
+    volumes:
+      - studio-sessions:/app/.runtime     # セッション保持(ファイルストア)
+    ports:
+      - "3000:3000"
+
+  # ── Vikunja (タスク管理) ──────────────────────────────────
+  vikunja:
+    image: vikunja/vikunja:latest
+    # 外部のVikunjaを既に使う場合はコメントアウトして、
+    # .env の VIKUNJA_URL を そのURL→ /api/v1 に変えること
+    environment:
+      VIKUNJA_SERVICE_CONFIG: /app/vikunja/config.yml
+    volumes:
+      - vikunja-files:/app/vikunja/files
+      - vikunja-db:/app/vikunja/data
+      - ./vikunja-config.yml:/app/vikunja/config.yml:ro
+    ports:
+      - "3456:3456"
+
+# ── Redis セッション永続化(任意) ────────────────────────────
+#   REDIS_URL=redis://redis:6379 にして docker compose --profile redis up
+  redis:
+    image: redis:7-alpine
+    profiles:
+      - redis
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+volumes:
+  hermes-home:
+  studio-sessions:
+  vikunja-files:
+  vikunja-db:
+  redis-data:

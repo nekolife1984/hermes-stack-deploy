@@ -1,0 +1,9 @@
+{
+  "name": "Hermes Studio + Agent + Vikunja",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "hermes-studio",
+  "workspaceFolder": "/app",
+  "overrideCommand": false,
+  "forwardPorts": [3000, 8642, 3456],
+  "postCreateCommand": "echo 'Adjust .env (ANTHROPIC_API_KEY / VIKUNJA_API_TOKEN) to get started'"
+}

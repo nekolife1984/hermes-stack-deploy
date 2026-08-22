@@ -1,0 +1,12 @@
+# Vikunja コンテナ用設定 (company)
+service:
+  secret: "REPLACE_WITH_A_LONG_RANDOM_SECRET"
+  interface: ":3456"
+  publicurl: "http://localhost:3456"
+  enableregistration: true   # 初回セットアップ用。使い始めたら false に推奨
+  timezone: "Asia/Tokyo"
+  rootpath: "/app/vikunja"
+
+database:
+  type: "sqlite"
+  path: "/app/vikunja/data/vikunja.db"
