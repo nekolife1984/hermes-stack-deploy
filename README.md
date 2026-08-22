@@ -17,7 +17,7 @@
                                        vikunja (:3456)
 ```
 
-- **hermes-agent**: Hermes Agent ゲートウェイ。モデルAPIキーは `.env` / OpenAI互換バックエンド。
+- **hermes-agent**: Hermes Agent ゲートウェイ。モデルプロバイダは **GitHub Copilot**(モデルAPIキー不要)。
 - **hermes-studio**: React/TS の Web UI。cron管理・multi-agent crews・メモリグラフ・承認UIなどを提供。
 - **vikunja**: タスク管理(Vikunja 2.5.0、SQLite)。エージェントが `vikunja-mcp` 経由でタスクをCRUD。
 
@@ -36,14 +36,22 @@ docker compose up --build   # → http://localhost:3000
 
 ## 初期セットアップ
 
-1. **Vikunja**: `http://localhost:3456` — 初期ユーザー作成用に一時的に
+1. **モデルプロバイダ(GitHub Copilot)**: エージェントを Copilot で動かす(モデルAPIキー不要)。
+   ```bash
+   # 方式A: .env に COPILOT_GITHUB_TOKEN(gho_ / github_pat_)を設定
+   # 方式B: コンテナ内でOAuthデバイスコードを一度流す(トークンは hermes-home に永続化)
+   docker compose exec hermes-agent hermes model   # → GitHub Copilot → Login with GitHub
+   # agentの model.provider=copilot / model.default=gpt-5.4 を設定して確認
+   ```
+   ※ classic PAT(`ghp_`)はCopilot APIで使えない点に注意。
+2. **Vikunja**: `http://localhost:3456` — 初期ユーザー作成用に一時的に
    registration を有効化する。compose の `VIKUNJA_SERVICE_ENABLEREGISTRATION` を `"true"` にして
    起動 → ユーザー作成後、すぐ `"false"` に戻して再起動。
    → 「設定 → APIトークン」で**長期有効なAPIトークン**を発行し、`.env` の `VIKUNJA_API_TOKEN` に入れる。
-2. **Hermes Studio**: `http://localhost:3000` でオンボード(エージェントの `API_SERVER_KEY` と
+3. **Hermes Studio**: `http://localhost:3000` でオンボード(エージェントの `API_SERVER_KEY` と
    `HERMES_API_TOKEN` が一致していれば接続成功)。
-3. **MCP連携**: Studio の Settings → MCP Servers に `vikunja` を登録(詳細は [mcp/vikunja-mcp.md](mcp/vikunja-mcp.md))。
-4. チャットで動作確認:「プロジェクトの一覧を出して」「Inbox にタスクを追加して」。
+4. **MCP連携**: Studio の Settings → MCP Servers に `vikunja` を登録(詳細は [mcp/vikunja-mcp.md](mcp/vikunja-mcp.md))。
+5. チャットで動作確認:「プロジェクトの一覧を出して」「Inbox にタスクを追加して」。
 
 ## セキュリティ / 会社運用の要点
 
