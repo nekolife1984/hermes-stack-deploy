@@ -57,6 +57,11 @@ docker compose up --build   # → http://localhost:3000
 - **バージョンピン**: `HERMES_AGENT_VERSION` / `STUDIO_VERSION` はリリースタグでピン止め推奨(再現性)。
 - **ベースイメージ**: 漂移を避けるならタグ+ダイジェストをピン。ビルドは `docker compose --pull build` で冒頭検証できる。
 
+## CI / 検証
+
+GitHub Actions(`.github/workflows/validate.yml`)がPR・main pushで自動実行:
+compose config バリデーション → 3イメージのビルドスモーク(`docker compose build`) → gitleaks シークレットスキャン。
+
 ## 構成
 
 ```

@@ -1,0 +1,42 @@
+name: compose-build-validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  config:
+    name: Compose config validation
+    runs-on: ubuntu-latest
+    env:
+      API_SERVER_KEY: ci-test
+      VIKUNJA_SERVICE_SECRET: ci-test
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose config --quiet
+
+  build:
+    name: Smoke-build images
+    runs-on: ubuntu-latest
+    env:
+      API_SERVER_KEY: ci-test
+      VIKUNJA_SERVICE_SECRET: ci-test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build hermes-agent vikunja
+      - run: docker compose build hermes-studio
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
