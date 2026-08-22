@@ -20,6 +20,9 @@ RUN if [ "${HERMES_AGENT_VERSION}" != "main" ]; then \
     fi
 RUN pip install --no-cache-dir -e .
 
+# uv (高速なPythonパッケージマネージャ) を同梱 — エージェント/スクリプトから呼び出せるように
+RUN python3 -m pip install --no-cache-dir uv
+
 ENV HOME=/root
 EXPOSE 8642
 CMD ["hermes", "gateway", "run"]
