@@ -23,16 +23,10 @@ RUN pip install --no-cache-dir -e .
 # uv (高速なPythonパッケージマネージャ) を同梱 — エージェント/スクリプトから呼び出せるように
 RUN python3 -m pip install --no-cache-dir uv
 
-# Python開発に必要な主要ツール群を同梱
-#   ruff(lint+format) / mypy(型) / pytest(+xdist/cov)(テスト)
-#   pre-commit(フック管理) / ipython(対話デバッグ) / requests(HTTPスクリプト)
+# Python開発ツール(最低限) — ランタイム画像を軽く保つため必要最小限に
+#   ruff(lint/format) / mypy(型) / pytest(テスト)
 RUN python3 -m pip install --no-cache-dir \
-    ruff \
-    mypy \
-    pytest pytest-xdist pytest-cov \
-    pre-commit \
-    ipython \
-    requests
+    ruff mypy pytest
 
 ENV HOME=/root
 EXPOSE 8642
