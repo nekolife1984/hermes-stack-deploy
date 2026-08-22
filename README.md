@@ -28,6 +28,9 @@ Studio の「Settings → MCP Servers」から vikunja-mcp を登録する(手�
 
 > 見分け方: **「コンテナ起動が成立するために要るか」**。`.env`の必須変数は起動前、
 > サービス/ブラウザ/インタラクションが要るものは起動済みでないとできない。
+>
+> **自動化**: シークレット生成〜`.env`作成〜起動までを `./scripts/setup.sh` で自動化できる
+> (冪等・対話式)。手動の要点は以下のとおり。
 
 ### Phase 0 — 起動「前」: `.env` を用意（これが無いと起動しない）
 
@@ -115,5 +118,7 @@ docker/studio/Dockerfile     # Hermes Studio(JPeetz/Hermes-Studioをクローン
 .env.example                 # 設定テンプレート(API_SERVER_KEY / VIKUNJA_SERVICE_SECRET 必須)
 vikunja-config.yml           # Vikunja コンテナ設定(secretはenv注入)
 mcp/vikunja-mcp.md           # Vikunja 連携(MCP登録)手順
+scripts/setup.sh             # 初期セットアップ自動化(シークレット/.env/起動)
+scripts/backup-volumes.sh    # volumeのバックアップ
 .gitignore / .dockerignore   # シークレット・ビルドcontext漏れ防止
 ```
