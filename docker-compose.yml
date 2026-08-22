@@ -65,7 +65,7 @@ services:
 
   # ── Vikunja (タスク管理) ──────────────────────────────────
   vikunja:
-    image: vikunja/vikunja:latest
+    image: vikunja/vikunja:2.5.0
     # 外部のVikunjaを既に使う場合はコメントアウトして、
     # .env の VIKUNJA_URL を そのURL→ /api/v1 に変えること
     environment:
